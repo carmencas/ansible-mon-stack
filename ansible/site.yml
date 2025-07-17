@@ -1,0 +1,19 @@
+- hosts: telegraf_servers
+  become: yes
+  roles:
+    - telegraf
+
+- hosts: exporter_servers
+  become: yes
+  roles:
+    - node_exporter
+
+- hosts: prometheus
+  become: yes
+  roles:
+    - prometheus
+
+- hosts: grafana
+  become: yes
+  roles:
+    - grafana

@@ -1,0 +1,24 @@
+# Versiones centralizadas
+node_exporter_version: "1.5.0"
+prometheus_version: "2.45.0"
+telegraf_version: "1.25.0"
+
+# Configuración de red
+prometheus_port: 9090
+node_exporter_port: 9100
+grafana_port: 3000
+
+# Directorios base
+base_install_dir: "/opt"
+base_config_dir: "/etc"
+base_data_dir: "/var/lib"
+
+# Usuarios del sistema
+prometheus_user: "prometheus"
+telegraf_user: "telegraf"
+grafana_user: "grafana"
+
+# Configuración de backup
+backup_enabled: true
+backup_retention_days: 7
+

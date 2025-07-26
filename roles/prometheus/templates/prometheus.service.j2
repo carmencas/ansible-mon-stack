@@ -1,0 +1,22 @@
+[Unit]
+Description=Prometheus Server
+Documentation=https://prometheus.io/docs/
+After=network-online.target
+
+[Service]
+Type=simple
+User={{ prometheus_user }}
+Group={{ prometheus_user }}
+ExecStart={{ base_install_dir }}/prometheus/prometheus \
+  --config.file={{ base_config_dir }}/prometheus/prometheus.yml \
+  --storage.tsdb.path={{ base_data_dir }}/prometheus/ \
+  --web.console.templates={{ base_install_dir }}/prometheus/consoles \
+  --web.console.libraries={{ base_install_dir }}/prometheus/console_libraries \
+  --web.listen-address=:{{ prometheus_port }} \
+  --storage.tsdb.retention.time={{ prometheus_retention | default('30d') }}
+Restart=always
+RestartSec=10
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

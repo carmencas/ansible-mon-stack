@@ -123,6 +123,7 @@ Once everything is up, you can hit the web UIs directly on your host:
   ### 📋 Key Sections
   - **Status → Targets**  
     View the list of all scrape targets (Node Exporter, Telegraf endpoints, and Prometheus itself). Each target should show **UP** under the “Status” column.  
+
     ![Prometheus Targets View](assets/01-Prometheus_targets.png)
 
   - **Graph**  

@@ -165,6 +165,7 @@ When you’re done experimenting, tear down everything with:
    vagrant destroy -f
    docker network rm vagrantnet  # if you no longer need the network
    ```
+This will remove all the test containers and free up resources.
 
 ---
 

@@ -153,6 +153,19 @@ Once everything is up, you can hit the web UIs directly on your host:
    ```plaintext
    http://localhost:8086/ping
    ```
+
+---
+
+## 🧹 Cleanup
+
+When you’re done experimenting, tear down everything with:
+
+   ```bash
+   cd ansible-mon-stack
+   vagrant destroy -f
+   docker network rm vagrantnet  # if you no longer need the network
+   ```
+
 ---
 
 ## 🔍 Tips

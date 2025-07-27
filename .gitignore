@@ -1,0 +1,13 @@
+.vagrant/
+pycache/
+*.py[cod]
+*.retry
+.vagrant.d/
+*.pem
+inventory/vagrant.ini
+inventory/docker.ini
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

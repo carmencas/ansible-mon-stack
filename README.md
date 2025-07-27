@@ -114,20 +114,39 @@ To simplify testing, we use **Vagrant** with the **Docker** provider:
 
 ## 🌐 Accessing the UIs
 
-Once everything is up, you can hit the web UIs directly on your host (Port forwarding is already configured in the Vagrantfile, so no additional steps are required):
-
+Once everything is up, you can hit the web UIs directly on your host:
 **Prometheus Web UI**
 
   ```plaintext
   http://localhost:9090
    ```
+  ### 📋 Key Sections
+  - **Status → Targets**  
+    View the list of all scrape targets (Node Exporter, Telegraf endpoints, and Prometheus itself). Each target should show **UP** under the “Status” column.  
+    ![Prometheus Targets View](assets/01-Prometheus_targets.png)
+
+  - **Graph**  
+  Enter PromQL expressions to verify data ingestion. For example:
+  ```promql
+  avg by (instance) (rate(node_cpu_seconds_total{mode!="idle"}[1m]))
+  ```
+  ![Prometheus Graph View](assets/02-Prometheus_graph.png)
+
+  - **Status → Service Discovery**  
+    See how Prometheus discovered each target (e.g., via static_configs). Useful for debugging inventory or template issues.
+
+  - **Status → Rules**
+    If you have recording or alerting rules, check their evaluation status here.
+
+  - **Alerts**
+    (If configured) view firing or pending alerts.
+
 
 **InfluxDB HTTP API (Ping)**
 
   ```plaintext
   http://localhost:9090
    ```
-
 ---
 
 ## 🔍 Tips

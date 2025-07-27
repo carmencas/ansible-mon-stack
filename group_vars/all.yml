@@ -13,7 +13,7 @@ telegraf_port: 8125
 
 # Basic config
 cluster_name: "monitoring"
-environment: "production"
+cluster_env: "production"
 timezone: "Europe/Madrid"
 
 # InfluxDB

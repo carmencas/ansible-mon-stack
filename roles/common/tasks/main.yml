@@ -11,8 +11,15 @@
       - unzip
       - htop
       - vim
+      - jq 
     state: present
 
 - name: Configure timezone
   timezone:
     name: "{{ timezone | default('UTC') }}"
+
+- name: Create temporal directory
+  file:
+    path: /tmp/monitoring
+    state: directory
+    mode: '0755'

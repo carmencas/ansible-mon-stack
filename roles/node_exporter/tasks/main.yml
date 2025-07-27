@@ -1,58 +1,40 @@
+---
 - name: Create node_exporter user
   user:
     name: node_exporter
     system: yes
     shell: /bin/false
-    home: /var/lib/node_exporter
     createhome: no
-
-- name: Check if Node Exporter is already installed
-  stat:
-    path: "{{ base_install_dir }}/node_exporter-{{ node_exporter_version }}"
-  register: node_exporter_installed
 
 - name: Download Node Exporter
   get_url:
     url: "https://github.com/prometheus/node_exporter/releases/download/v{{ node_exporter_version }}/node_exporter-{{ node_exporter_version }}.linux-amd64.tar.gz"
-    dest: "/tmp/node_exporter-{{ node_exporter_version }}.tar.gz"
-    mode: '0644'
-  when: not node_exporter_installed.stat.exists
-  retries: 3
-  delay: 5
+    dest: "/tmp/node_exporter.tar.gz"
 
-- name: Extract Node Exporter
+- name: Extract Node Exporter archive
   unarchive:
-    src: "/tmp/node_exporter-{{ node_exporter_version }}.tar.gz"
-    dest: "{{ base_install_dir }}"
+    src: "/tmp/node_exporter.tar.gz"
+    dest: "/tmp"
     remote_src: yes
+
+- name: Copy Node Exporter binary
+  copy:
+    src: "/tmp/node_exporter-{{ node_exporter_version }}.linux-amd64/node_exporter"
+    dest: "/usr/local/bin/node_exporter"
     owner: node_exporter
     group: node_exporter
-  when: not node_exporter_installed.stat.exists
+    mode: '0755'
+    remote_src: yes
 
-- name: Create symlink for Node Exporter
-  file:
-    src: "{{ base_install_dir }}/node_exporter-{{ node_exporter_version }}.linux-amd64"
-    dest: "{{ base_install_dir }}/node_exporter"
-    state: link
-  notify: restart node_exporter
-
-- name: Create systemd service for node_exporter
+- name: Create systemd service for Node Exporter
   template:
     src: node_exporter.service.j2
     dest: /etc/systemd/system/node_exporter.service
-    mode: '0644'
   notify:
     - reload systemd
     - restart node_exporter
 
-- name: Configure firewall for Node Exporter
-  ufw:
-    rule: allow
-    port: "{{ node_exporter_port }}"
-    proto: tcp
-  when: configure_firewall | default(true)
-
-- name: Ensure node_exporter is running
+- name: Start and enable Node Exporter
   systemd:
     name: node_exporter
     enabled: yes

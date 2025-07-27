@@ -1,17 +1,18 @@
 # 📊 Ansible Monitoring Stack
 
-Automated deployment of a complete monitoring infrastructure using **Prometheus**, **Grafana**, **Telegraf**, and **Node Exporter** with Ansible.
+Automated deployment of a complete monitoring infrastructure using **Prometheus**, **InfluxDB**, **Telegraf**, and **Node Exporter** with Ansible.
 
 ## 🎯 Project Overview
 
 This Ansible project automates the installation and configuration of a production-ready monitoring stack across your infrastructure. It provides centralized metrics collection, storage, visualization, and alerting capabilities.
 
 **What it deploys:**
-- **🔍 Prometheus**: Time-series database and monitoring system
-- **📈 Grafana**: Visualization and dashboarding platform  
-- **📡 Telegraf**: Metrics collection agent for InfluxDB
-- **🖥️ Node Exporter**: System metrics exporter for Prometheus
-- **⚠️ Alerting**: Basic alert rules and configurations
+
+* **🔍 Prometheus**: Time-series database and monitoring system
+* **📦 InfluxDB**: Time-series database optimized for high-write workloads
+* **📡 Telegraf**: Metrics collection agent for InfluxDB
+* **🖥️ Node Exporter**: System metrics exporter for Prometheus
+* **⚠️ Alerting**: Basic alert rules and configurations
 
 ## 🏗️ Architecture
 
@@ -20,51 +21,50 @@ graph TD
     A[Servers with Telegraf] --> B[InfluxDB v2]
     C[Servers with Node Exporter] --> D[Prometheus]
     A --> D
-    B --> E[Grafana]
-    D --> E
-    E --> F[Dashboards & Alerts]
+    D --> B
+    B --> E[Alerts]
+    E --> F[Notification Channels]
 ```
-
-The architecture follows a hub-and-spoke model where:
-- **Agents** (Telegraf, Node Exporter) run on application servers
-- **Prometheus** centrally scrapes metrics from all agents
-- **Grafana** provides unified dashboards and alerting
-- **InfluxDB** stores additional metrics from Telegraf
 
 ## 📁 Project Structure
 
 ```
 ansible-monitoring/
 ├── ansible.cfg                 # Ansible configuration
-├── site.yml                   # Main playbook
-├── requirements.yml            # Collection dependencies
+├── site.yml                    # Main playbook
+├── Vagrantfile                 # Vagrant + Docker provider environment
 ├── inventory/                  # Host inventories
+│   ├── hosts.ini               # Production inventory
+│   └── vagrant.ini             # Vagrant test inventory
 ├── group_vars/                 # Group variables
 ├── roles/                      # Ansible roles
-│   ├── common/                # Common system setup
-│   ├── prometheus/            # Prometheus server
-│   ├── grafana/               # Grafana server
-│   ├── telegraf/              # Telegraf agent
-│   └── node_exporter/         # Node Exporter agent
-├── tests/                     # Testing infrastructure
-└── scripts/                   # Utility scripts
+│   ├── common/                 # Common system setup
+│   ├── prometheus/             # Prometheus server role
+│   ├── telegraf/               # Telegraf agent role
+│   └── node_exporter/          # Node Exporter agent role
+├── tests/                      # Testing infrastructure (Compose, Molecule, etc.)
+└── scripts/                    # Utility scripts
 ```
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
-- **Ansible** >= 2.9
-- **Python** >= 3.6
-- **SSH access** to target servers
-- **sudo privileges** on target servers
+* **Ansible** >= 2.9
+* **Python** >= 3.6 on control node and targets
+* **SSH access** to target servers
+* **sudo** privileges on target servers
+* **(Optional)** Docker & Vagrant for local testing
 
-### Basic Deployment
+---
+
+### 1️⃣ Production Deployment
 
 1. **Configure your inventory** in `inventory/hosts.ini`:
+
    ```ini
    [monitoring]
-   monitoring.example.com
+   prometheus.example.com
 
    [application_servers]
    web1.example.com
@@ -74,368 +74,262 @@ ansible-monitoring/
    [telegraf_servers:children]
    application_servers
 
-   [exporter_servers:children]
+   [node_exporter_servers:children]
    application_servers
    monitoring
 
    [prometheus:children]
    monitoring
 
-   [grafana:children]
+   [influxdb:children]
    monitoring
+
+   [alerting]
+   monitoring
+
+   [all:vars]
+   ansible_python_interpreter=/usr/bin/python3
    ```
 
 2. **Set your variables** in `group_vars/all.yml`:
+
    ```yaml
-   # Software versions
+   # Versions
    prometheus_version: "2.45.0"
+   influxdb_version: "2.6.1"
+   telegraf_version: "1.25.0"
    node_exporter_version: "1.5.0"
-   
-   # Network configuration
+
+   # Ports
    prometheus_port: 9090
-   grafana_port: 3000
-   
+   influxdb_port: 8086
+
    # Data retention
    prometheus_retention: "30d"
    ```
 
-3. **Deploy the stack**:
+3. **Run the playbook**:
+
    ```bash
-   ansible-playbook site.yml
+   ansible-playbook site.yml -i inventory/hosts.ini
    ```
 
-4. **Access your services**:
-   - Prometheus: `http://monitoring.example.com:9090`
-   - Grafana: `http://monitoring.example.com:3000`
+4. **Access services**: **Run the playbook**:
+
+   ```bash
+   ansible-playbook site.yml -i inventory/hosts.ini
+   ```
+
+5. **Access services**:
+
+   * Prometheus: `http://prometheus.example.com:9090`
+   * InfluxDB:  `http://monitoring.example.com:8086`
+
+---
+
+### 2️⃣ Local Testing with Vagrant + Docker
+
+Use this method to spin up Ubuntu containers locally and test your roles without external servers.
+
+1. **Install prerequisites**:
+
+   * Docker (Engine + CLI)
+   * Vagrant (>= 2.2)
+
+2. **(Optional) Create a Docker network** with a non-overlapping subnet (if you need fixed IPs):
+
+   ```bash
+   docker network create --subnet=172.30.1.0/24 vagrantnet
+   ```
+
+3. **Ensure the provided `Vagrantfile` is in your project root** (it auto-generates an ed25519 key).
+
+4. **Start the Vagrant environment**:
+
+   ```bash
+   vagrant destroy -f                # Cleanup previous runs
+   vagrant up --provider=docker       # Launch 4 Ubuntu containers with SSH
+   ```
+
+5. **Generate SSH config** for Ansible:
+
+   ```bash
+   vagrant ssh-config web01 web02 db01 monitor01 > ./.vagrant/ssh-config
+   ```
+
+6. **Create the Vagrant inventory** in `inventory/vagrant.ini`:
+
+   ```ini
+   [telegraf_servers]
+   web01 ansible_host=127.0.0.1 ansible_port=2222
+   web02 ansible_host=127.0.0.1 ansible_port=2223
+   db01  ansible_host=127.0.0.1 ansible_port=2224
+
+   [node_exporter_servers]
+   web01     ansible_host=127.0.0.1 ansible_port=2222
+   web02     ansible_host=127.0.0.1 ansible_port=2223
+   db01      ansible_host=127.0.0.1 ansible_port=2224
+   monitor01 ansible_host=127.0.0.1 ansible_port=2225
+
+   [prometheus]
+   monitor01 ansible_host=127.0.0.1 ansible_port=2225
+
+   [influxdb]
+   monitor01 ansible_host=127.0.0.1 ansible_port=2225
+
+   [all:vars]
+   ansible_user=vagrant
+   ansible_ssh_private_key_file=./.vagrant_ed25519
+   ansible_python_interpreter=/usr/bin/python3
+   ansible_ssh_common_args=-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
+   ```
+
+7. **Test connectivity**:0.0.1 ansible\_port=2222
+   web02 ansible\_host=127.0.0.1 ansible\_port=2223
+
+   \[node\_exporter\_servers]
+   web01     ansible\_host=127.0.0.1 ansible\_port=2222
+   web02     ansible\_host=127.0.0.1 ansible\_port=2223
+   db01      ansible\_host=127.0.0.1 ansible\_port=2224
+   monitor01 ansible\_host=127.0.0.1 ansible\_port=2225
+
+   \[prometheus]
+   monitor01 ansible\_host=127.0.0.1 ansible\_port=2225
+
+   \[influxdb]
+   monitor01 ansible\_host=127.0.0.1 ansible\_port=2225
+
+   \[alerting]
+   monitor01 ansible\_host=127.0.0.1 ansible\_port=2225
+
+   \[all\:vars]
+   ansible\_user=vagrant
+   ansible\_ssh\_private\_key\_file=.vagrant\_ed25519
+   ansible\_python\_interpreter=/usr/bin/python3
+   ansible\_ssh\_common\_args=-F ./.vagrant/ssh-config
+
+   ```
+   ```
+
+8. **Test connectivity**:
+
+   ```bash
+   ansible all -i inventory/vagrant.ini -m ping
+   ```
+
+9. **Run the playbook** locally:
+
+   ```bash
+   ansible-playbook site.yml -i inventory/vagrant.ini
+   ```
+
+10. **Cleanup**:
+
+    ```bash
+    vagrant destroy -f
+    ```
+
+---
 
 ## 🎛️ Configuration Options
 
-### Inventory Patterns
+**Inventory Patterns**
 
-**Small Infrastructure (3-10 servers)**
-- Single monitoring server running all services
-- All application servers with both Telegraf and Node Exporter
+* **Small:** Single monitoring server; all agents on app servers.
+* **Medium:** Separate servers for Prometheus, InfluxDB, Grafana; grouped app servers.
+* **Large:** Multiple Prometheus instances; federated Grafana; distributed InfluxDB.
 
-**Medium Infrastructure (10-50 servers)**
-- Separate servers for Prometheus, Grafana, and InfluxDB
-- Application servers grouped by function (web, api, database)
-
-**Large Infrastructure (50+ servers)**
-- Multiple Prometheus instances (by region/environment)
-- Centralized Grafana with federation
-- Distributed InfluxDB instances
-
-### Key Variables
-
-Located in `group_vars/all.yml`:
+### Key Variables (`group_vars/all.yml`)
 
 ```yaml
-# Versions (centrally managed)
-prometheus_version: "2.45.0"
-node_exporter_version: "1.5.0"
-telegraf_version: "1.25.0"
+# Versions (LTS/estables)
+telegraf_version: "1.28"
+prometheus_version: "2.47.0"
+node_exporter_version: "1.6.1"
+influxdb_version: "1.8.10"
 
-# Network & Security
-configure_firewall: true
+# Ports
 prometheus_port: 9090
-grafana_port: 3000
+node_exporter_port: 9100
+influxdb_port: 8086
+telegraf_port: 8125
 
-# Data Management
-prometheus_retention: "30d"
-backup_enabled: true
-backup_retention_days: 7
+# Basic config
+cluster_name: "monitoring"
+environment: "production"
+timezone: "Europe/Madrid"
 
-# System Configuration
-timezone: "UTC"
+# InfluxDB
+influxdb_database: "telegraf"
+influxdb_retention: "30d"
+
+# Users
 prometheus_user: "prometheus"
+telegraf_user: "telegraf"
+influxdb_user: "influxdb"
 ```
 
 ### Secrets Management
 
-Use Ansible Vault for sensitive data in `group_vars/vault.yml`:
+Use Ansible Vault for sensitive data:
 
 ```bash
-# Create encrypted file
 ansible-vault create group_vars/vault.yml
-
-# Edit encrypted file
 ansible-vault edit group_vars/vault.yml
-
-# Deploy with vault
 ansible-playbook site.yml --ask-vault-pass
 ```
 
 ## 🧪 Testing
 
-The project includes comprehensive testing options for different scenarios.
-
-### Option 1: Docker Compose (Fastest)
-
-Ideal for quick validation and development:
+### 1. Docker Compose (Fastest)
 
 ```bash
-# Start test environment
 docker-compose -f tests/docker-compose.test.yml up -d
-
-# Run playbook against containers
 ansible-playbook site.yml -i inventory/docker.ini
-
-# Verify services
-curl http://localhost:9090  # Prometheus
-curl http://localhost:3000  # Grafana
-
-# Cleanup
+curl http://localhost:9090
+curl http://localhost:8086
 docker-compose -f tests/docker-compose.test.yml down
 ```
 
-### Option 2: Vagrant (Most Realistic)
+### 2. Vagrant (Realistic)
 
-Best for testing system-level configurations:
+*(As detailed above in Quick Start)*
 
-```bash
-# Navigate to tests directory
-cd tests/
-
-# Create VMs
-vagrant up
-
-# Run playbook
-ansible-playbook site.yml -i inventory/vagrant.ini
-
-# SSH into VMs
-vagrant ssh monitoring
-vagrant ssh web1
-
-# Cleanup
-vagrant destroy -f
-```
-
-### Option 3: Molecule (Professional)
-
-Complete testing framework with automated verification:
+### 3. Molecule (Professional)
 
 ```bash
-# Install dependencies
 pip install molecule[docker] pytest testinfra
-
-# Run full test suite
 molecule test
-
-# Individual test phases
-molecule create    # Create test infrastructure
-molecule converge  # Run playbook
-molecule verify    # Run test assertions
-molecule destroy   # Cleanup
 ```
-
-### Automated Testing
-
-The project includes automated tests that verify:
-- ✅ Services are running and enabled
-- ✅ Ports are listening correctly
-- ✅ Configuration files are deployed
-- ✅ Users and permissions are set
-- ✅ Metrics endpoints are accessible
-- ✅ Inter-service connectivity works
 
 ## 📊 Monitoring Capabilities
 
-### Metrics Collected
+**System Metrics (Node Exporter)**: CPU, memory, disk, network, load
 
-**System Metrics (Node Exporter)**:
-- CPU usage per core and total
-- Memory utilization and availability
-- Disk space and I/O statistics
-- Network traffic and errors
-- System load averages
+**Application Metrics (Telegraf)**: process, service, custom, logs
 
-**Application Metrics (Telegraf)**:
-- Process monitoring
-- Service-specific metrics
-- Custom application metrics
-- Log parsing and analysis
-
-### Built-in Alerts
-
-Pre-configured alert rules include:
-- **High CPU Usage**: >80% for 5 minutes
-- **High Memory Usage**: >85% for 5 minutes
-- **Low Disk Space**: <10% available for 5 minutes
-- **Service Down**: Prometheus target unreachable
-- **High Load Average**: >2.0 for 5 minutes
-
-### Dashboards
-
-Grafana comes pre-configured with:
-- System overview dashboard
-- Node Exporter metrics visualization
-- Prometheus target health
-- Alert status and history
+**Alerts**: High CPU, memory, disk, service down, high load
 
 ## 🔧 Operational Commands
 
-### Deployment Commands
-
-```bash
-# Full deployment
-ansible-playbook site.yml
-
-# Deploy specific components
-ansible-playbook site.yml --tags prometheus
-ansible-playbook site.yml --tags grafana
-ansible-playbook site.yml --limit monitoring
-
-# Dry run (no changes)
+````bash
 ansible-playbook site.yml --check --diff
-
-# Verbose output
-ansible-playbook site.yml -vvv
-```
-
-### Verification Commands
-
-```bash
-# Check syntax
-ansible-playbook --syntax-check site.yml
-
-# Lint playbook
-ansible-lint site.yml
-
-# Verify connectivity
 ansible all -m ping
+ansible all -m systemd -a "name=prometheus state=restarted"```
 
-# Check service status
-ansible all -m systemd -a "name=prometheus"
-ansible all -m systemd -a "name=node_exporter"
-```
+## 🔒 Security
 
-### Maintenance Commands
-
-```bash
-# Restart services
-ansible prometheus -m systemd -a "name=prometheus state=restarted"
-
-# Update configuration
-ansible-playbook site.yml --tags config
-
-# Check logs
-ansible all -m shell -a "journalctl -u prometheus -n 20"
-```
-
-## 🔒 Security Considerations
-
-### Network Security
-
-- Prometheus (9090): Internal network only
-- Grafana (3000): VPN or authenticated access
-- Node Exporter (9100): Prometheus access only
-- Telegraf (8125): Metrics endpoint secured
-
-### System Security
-
-- Dedicated system users for each service
-- Minimal file permissions
-- SELinux/AppArmor compatibility
-- Firewall rules automatically configured
-
-### Best Practices
-
-- ✅ Use Ansible Vault for secrets
-- ✅ Implement network segmentation
-- ✅ Regular security updates
-- ✅ Monitor the monitoring infrastructure
-- ✅ Backup configurations and data
+- Use Ansible Vault
+- Network segmentation
+- Regular updates
 
 ## 🚨 Troubleshooting
 
-### Common Issues
-
-**SSH Connection Problems**:
-```bash
-# Test connectivity
-ansible all -m ping
-# Copy SSH keys
-ssh-copy-id user@server
-```
-
-**Service Start Failures**:
-```bash
-# Check service status
-ansible all -m shell -a "systemctl status prometheus"
-# View logs
-ansible all -m shell -a "journalctl -u prometheus -n 50"
-```
-
-**Port Conflicts**:
-```bash
-# Check port usage
-ansible all -m shell -a "netstat -tlnp | grep :9090"
-# Modify port in group_vars/all.yml
-```
-
-**Permission Issues**:
-```bash
-# Check file ownership
-ansible all -m shell -a "ls -la /etc/prometheus/"
-# Fix permissions
-ansible-playbook site.yml --tags permissions
-```
-
-### Log Locations
-
-- **Prometheus**: `/var/log/prometheus/` or `journalctl -u prometheus`
-- **Grafana**: `/var/log/grafana/` or `journalctl -u grafana-server`
-- **Node Exporter**: `journalctl -u node_exporter`
-- **Telegraf**: `journalctl -u telegraf`
-
-## 🔄 Updates and Maintenance
-
-### Version Updates
-
-1. Update version variables in `group_vars/all.yml`
-2. Run playbook with updated configuration
-3. Verify services after update
-
-### Backup Strategy
-
-- Configuration files backed up before changes
-- Prometheus data retention configurable
-- Grafana dashboards exported automatically
-- Database backups scheduled if enabled
-
-### Monitoring the Monitors
-
-- Prometheus monitors itself
-- Grafana health checks included
-- Node Exporter metrics for monitoring servers
-- Alert if monitoring infrastructure fails
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Add tests for new functionality
-4. Ensure all tests pass
-5. Submit a pull request
-
-### Development Guidelines
-
-- Follow Ansible best practices
-- Use `ansible-lint` for code quality
-- Add documentation for new variables
-- Include tests for new roles
-- Update README for significant changes
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 🆘 Support
-
-- **Issues**: Report bugs and request features via GitHub Issues
-- **Documentation**: Additional documentation in the project wiki
-- **Community**: Join discussions in GitHub Discussions
+- **SSH issues**: clean `known_hosts`, use `-F ./.vagrant/ssh-config`
+- **Service fails**: `ansible all -m shell -a "journalctl -u prometheus -n 50"`
 
 ---
 
-**⭐ If you find this project useful, please give it a star on GitHub!**
+⭐ If you find this project useful, please give it a star on GitHub!
+
+````

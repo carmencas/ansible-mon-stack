@@ -1,0 +1,32 @@
+[global_tags]
+  environment = "{{ environment }}"
+  host = "{{ inventory_hostname }}"
+
+[agent]
+  interval = "10s"
+  round_interval = true
+  hostname = "{{ inventory_hostname }}"
+
+# Output to InfluxDB
+[[outputs.influxdb]]
+  urls = ["http://{{ hostvars[groups['influxdb'][0]]['ansible_default_ipv4']['address'] }}:{{ influxdb_port }}"]
+  database = "{{ influxdb_database }}"
+  timeout = "5s"
+
+# Output for Prometheus (hybrid metrics)
+[[outputs.prometheus_client]]
+  listen = ":{{ telegraf_port }}"
+
+# Basic system metrics
+[[inputs.cpu]]
+  percpu = true
+  totalcpu = true
+
+[[inputs.disk]]
+  ignore_fs = ["tmpfs", "devtmpfs"]
+
+[[inputs.mem]]
+
+[[inputs.system]]
+
+[[inputs.net]]

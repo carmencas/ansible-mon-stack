@@ -1,24 +1,26 @@
-# Versiones centralizadas
-node_exporter_version: "1.5.0"
-prometheus_version: "2.45.0"
-telegraf_version: "1.25.0"
+---
+# Versions (LTS/estables)
+telegraf_version: "1.28"
+prometheus_version: "2.47.0"
+node_exporter_version: "1.6.1"
+influxdb_version: "1.8.10"
 
-# Configuración de red
+# Ports
 prometheus_port: 9090
 node_exporter_port: 9100
-grafana_port: 3000
+influxdb_port: 8086
+telegraf_port: 8125
 
-# Directorios base
-base_install_dir: "/opt"
-base_config_dir: "/etc"
-base_data_dir: "/var/lib"
+# Basic config
+cluster_name: "monitoring"
+environment: "production"
+timezone: "Europe/Madrid"
 
-# Usuarios del sistema
+# InfluxDB
+influxdb_database: "telegraf"
+influxdb_retention: "30d"
+
+# Users
 prometheus_user: "prometheus"
 telegraf_user: "telegraf"
-grafana_user: "grafana"
-
-# Configuración de backup
-backup_enabled: true
-backup_retention_days: 7
-
+influxdb_user: "influxdb"

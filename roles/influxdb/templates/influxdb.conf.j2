@@ -1,0 +1,16 @@
+[meta]
+  dir = "/var/lib/influxdb/meta"
+
+[data]
+  dir = "/var/lib/influxdb/data"
+  wal-dir = "/var/lib/influxdb/wal"
+
+[http]
+  enabled = true
+  bind-address = ":{{ influxdb_port }}"
+  auth-enabled = false
+
+[[udp]]
+  enabled = true
+  bind-address = ":8089"
+  database = "{{ influxdb_database }}"

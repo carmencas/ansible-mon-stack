@@ -1,57 +1,44 @@
 ---
-- name: Common setup
+- name: Basic setup on all servers
   hosts: all
   become: yes
   roles:
     - common
-  tags:
-    - common
 
-- name: Deploy Telegraf
+- name: Install InfluxDB
+  hosts: influxdb
+  become: yes
+  roles:
+    - influxdb
+
+- name: Install Telegraf on servers
   hosts: telegraf_servers
   become: yes
   roles:
     - telegraf
-  tags:
-    - telegraf
 
-- name: Deploy Node Exporter
-  hosts: exporter_servers
+- name: Install Node Exporter
+  hosts: node_exporter_servers
   become: yes
   roles:
     - node_exporter
-  tags:
-    - node_exporter
 
-- name: Deploy Prometheus
+- name: Install Prometheus
   hosts: prometheus
   become: yes
   roles:
     - prometheus
-  tags:
-    - prometheus
 
-- name: Deploy Grafana
-  hosts: grafana
-  become: yes
-  roles:
-    - grafana
-  tags:
-    - grafana
-
-- name: Verify deployment
+- name: Verify services
   hosts: all
-  become: yes
   tasks:
-    - name: Check service status
-      systemd:
-        name: "{{ item }}"
-      register: service_status
+    - name: Check that the services are running
+      uri:
+        url: "{{ item }}"
+        method: GET
+      ignore_errors: yes
       loop:
-        - telegraf
-        - node_exporter
-        - prometheus
-        - grafana-server
-      when: item in group_names
-      tags:
-        - verify
+        - "http://{{ ansible_default_ipv4.address }}:{{ prometheus_port }}"
+        - "http://{{ ansible_default_ipv4.address }}:{{ influxdb_port }}/ping"
+        - "http://{{ ansible_default_ipv4.address }}:{{ node_exporter_port }}/metrics"
+      when: item != ""

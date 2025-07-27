@@ -1,100 +1,64 @@
-- name: Create prometheus user
+---
+- name: Create Prometheus user
   user:
     name: "{{ prometheus_user }}"
     system: yes
     shell: /bin/false
-    home: "{{ base_data_dir }}/prometheus"
+    home: /var/lib/prometheus
     createhome: yes
 
-- name: Create prometheus directories
+- name: Create directories for Prometheus
   file:
     path: "{{ item }}"
     state: directory
     owner: "{{ prometheus_user }}"
     group: "{{ prometheus_user }}"
-    mode: '0755'
   loop:
-    - "{{ base_data_dir }}/prometheus"
-    - "{{ base_config_dir }}/prometheus"
-    - "{{ base_config_dir }}/prometheus/rules"
-
-- name: Check if Prometheus is already installed
-  stat:
-    path: "{{ base_install_dir }}/prometheus-{{ prometheus_version }}"
-  register: prometheus_installed
+    - /etc/prometheus
+    - /var/lib/prometheus
 
 - name: Download Prometheus
   get_url:
     url: "https://github.com/prometheus/prometheus/releases/download/v{{ prometheus_version }}/prometheus-{{ prometheus_version }}.linux-amd64.tar.gz"
-    dest: "/tmp/prometheus-{{ prometheus_version }}.tar.gz"
-    mode: '0644'
-  when: not prometheus_installed.stat.exists
-  retries: 3
-  delay: 5
+    dest: "/tmp/prometheus.tar.gz"
 
-- name: Extract Prometheus
+- name: Extract Prometheus archive
   unarchive:
-    src: "/tmp/prometheus-{{ prometheus_version }}.tar.gz"
-    dest: "{{ base_install_dir }}"
+    src: "/tmp/prometheus.tar.gz"
+    dest: "/tmp"
     remote_src: yes
+
+- name: Copy Prometheus binaries
+  copy:
+    src: "/tmp/prometheus-{{ prometheus_version }}.linux-amd64/{{ item }}"
+    dest: "/usr/local/bin/{{ item }}"
     owner: "{{ prometheus_user }}"
     group: "{{ prometheus_user }}"
-  when: not prometheus_installed.stat.exists
+    mode: '0755'
+    remote_src: yes
+  loop:
+    - prometheus
+    - promtool
 
-- name: Create symlink for Prometheus
-  file:
-    src: "{{ base_install_dir }}/prometheus-{{ prometheus_version }}.linux-amd64"
-    dest: "{{ base_install_dir }}/prometheus"
-    state: link
-  notify: restart prometheus
-
-- name: Deploy Prometheus configuration
+- name: Configure Prometheus
   template:
     src: prometheus.yml.j2
-    dest: "{{ base_config_dir }}/prometheus/prometheus.yml"
+    dest: /etc/prometheus/prometheus.yml
     owner: "{{ prometheus_user }}"
     group: "{{ prometheus_user }}"
-    mode: '0644'
-    backup: yes
   notify: restart prometheus
 
-- name: Deploy alerting rules
-  template:
-    src: "{{ item }}.j2"
-    dest: "{{ base_config_dir }}/prometheus/rules/{{ item }}"
-    owner: "{{ prometheus_user }}"
-    group: "{{ prometheus_user }}"
-    mode: '0644'
-  loop:
-    - node_alerts.yml
-    - service_alerts.yml
-  notify: restart prometheus
-
-- name: Create systemd service file
+- name: Create systemd service for Prometheus
   template:
     src: prometheus.service.j2
     dest: /etc/systemd/system/prometheus.service
-    mode: '0644'
   notify:
     - reload systemd
     - restart prometheus
 
-- name: Configure firewall for Prometheus
-  ufw:
-    rule: allow
-    port: "{{ prometheus_port }}"
-    proto: tcp
-  when: configure_firewall | default(true)
-
-- name: Ensure Prometheus is running
+- name: Start and enable Prometheus
   systemd:
     name: prometheus
     enabled: yes
     state: started
     daemon_reload: yes
-
-- name: Setup logrotate for Prometheus
-  template:
-    src: prometheus.logrotate.j2
-    dest: /etc/logrotate.d/prometheus
-    mode: '0644'

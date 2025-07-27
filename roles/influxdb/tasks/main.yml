@@ -1,0 +1,59 @@
+---
+- name: Create InfluxDB user
+  user:
+    name: "{{ influxdb_user }}"
+    system: yes
+    shell: /bin/false
+    createhome: no
+
+- name: Add InfluxDB repository GPG key
+  apt_key:
+    url: https://repos.influxdata.com/influxdb.key
+    state: present
+
+- name: Add InfluxDB repository
+  apt_repository:
+    repo: "deb https://repos.influxdata.com/ubuntu focal stable"
+    state: present
+
+- name: Install InfluxDB
+  apt:
+    name: influxdb
+    state: present
+    update_cache: yes
+
+- name: Create configuration directory
+  file:
+    path: /etc/influxdb
+    state: directory
+    owner: "{{ influxdb_user }}"
+    group: "{{ influxdb_user }}"
+
+- name: Configure InfluxDB
+  template:
+    src: influxdb.conf.j2
+    dest: /etc/influxdb/influxdb.conf
+    owner: "{{ influxdb_user }}"
+    group: "{{ influxdb_user }}"
+  notify: restart influxdb
+
+- name: Start and enable InfluxDB
+  systemd:
+    name: influxdb
+    enabled: yes
+    state: started
+
+- name: Wait for InfluxDB to be ready
+  wait_for:
+    port: "{{ influxdb_port }}"
+    delay: 10
+    timeout: 60
+
+- name: Create Telegraf database
+  uri:
+    url: "http://localhost:{{ influxdb_port }}/query"
+    method: POST
+    body: "q=CREATE DATABASE {{ influxdb_database }}"
+    status_code: 200
+  retries: 3
+  delay: 5

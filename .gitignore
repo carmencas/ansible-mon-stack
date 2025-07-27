@@ -1,14 +1,27 @@
+# Vagrant state and SSH keys
 .vagrant/
+.vagrant_d/
 .vagrant_ed25519*
-pycache/
-*.py[cod]
-*.retry
-.vagrant.d/
-*.pem
+
+# Dynamic inventory
 inventory/vagrant.ini
 inventory/docker.ini
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Ansible retry files
+*.retry
+
+# Private keys
+*.pem
+
+# macOS / Windows
 .DS_Store
 Thumbs.db
+
+# IDE / editors
 .idea/
 .vscode/
 *.swp

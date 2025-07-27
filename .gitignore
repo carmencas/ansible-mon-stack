@@ -1,4 +1,5 @@
 .vagrant/
+.vagrant_ed25519*
 pycache/
 *.py[cod]
 *.retry

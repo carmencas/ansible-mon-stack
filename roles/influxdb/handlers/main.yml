@@ -1,16 +1,20 @@
 ---
 - name: restart influxdb
   block:
+
     - name: Reload systemd
       systemd:
         daemon_reload: yes
+      when: ansible_service_mgr == 'systemd'
 
     - name: Restart influxdb.service
       systemd:
         name: influxdb
         state: restarted
+        enabled: yes
+      when: ansible_service_mgr == 'systemd'
 
-    - name: Restart InfluxDB manually (Docker fallback)
+    - name: Launch influxd manually in background (Docker fallback)
       shell: |
         pkill influxd || true
         nohup influxd --config /etc/influxdb/influxdb.conf \
@@ -18,4 +22,3 @@
       args:
         executable: /bin/bash
       when: ansible_service_mgr != 'systemd'
-  when: ansible_service_mgr == 'systemd' or ansible_service_mgr != 'systemd'

@@ -44,8 +44,6 @@
   template:
     src: prometheus.yml.j2
     dest: /etc/prometheus/prometheus.yml
-    owner: "{{ prometheus_user }}"
-    group: "{{ prometheus_user }}"
   notify: restart prometheus
 
 - name: Deploy Prometheus systemd unit

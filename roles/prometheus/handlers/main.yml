@@ -1,16 +1,20 @@
 ---
 - name: restart prometheus
   block:
+
     - name: Reload systemd
       systemd:
         daemon_reload: yes
+      when: ansible_service_mgr == 'systemd'
 
-    - name: Restart prometheus.service
+    - name: Restart prometheus service
       systemd:
         name: prometheus
         state: restarted
+        enabled: yes
+      when: ansible_service_mgr == 'systemd'
 
-    - name: Launch Prometheus manually if not under systemd
+    - name: Launch prometheus manually (Docker fallback)
       shell: |
         pkill prometheus || true
         nohup prometheus \

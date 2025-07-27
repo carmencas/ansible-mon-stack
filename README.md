@@ -19,6 +19,26 @@ Provide a reproducible, easy-to-launch environment to validate monitoring config
 
 ---
 
+## 📂 Project Structure
+
+```
+ansible-mon-stack/
+├─ site.yml
+├─ Vagrantfile
+├─ inventory/
+│  └─ vagrant.ini
+├─ group_vars/
+│  └─ all.yml
+└─ roles/
+   ├─ common/
+   ├─ influxdb/
+   ├─ telegraf/
+   ├─ node_exporter/
+   └─ prometheus/
+```
+
+---
+
 ## 🔄 Service Interactions
 
 ```mermaid
@@ -48,16 +68,13 @@ graph TD
 
 To simplify testing, we use **Vagrant** with the **Docker** provider:
 
-1. Each "VM" is actually a Docker container running Ubuntu.
-2. Vagrant sets up a private network and maps unique local ports (e.g., 2222, 2223, …).
-3. The Ansible inventory points to `127.0.0.1` with different ports to mimic separate hosts.
-4. Spin up all containers in parallel with a single command:
+1. Create the Docker network (one‑time):
 
    ```bash
-   cd ansible-mon-stack
-   vagrant up --provider=docker
-   ansible-playbook site.yml -i inventory/vagrant.ini
+   docker network create --driver bridge --subnet 10.0.1.0/24 vagrantnet
    ```
+2. Each "VM" is actually an Ubuntu container attached to `vagrantnet` with a static IP (10.0.1.10, .11, .20, .30).
+3. Vagrant exposes SSH on localhost ports (2222→web01, 2223→web02, 2224→db01, 2225→monitor01).
 
 ---
 
@@ -68,17 +85,23 @@ To simplify testing, we use **Vagrant** with the **Docker** provider:
    ```bash
    git clone <repo-url> && cd ansible-mon-stack
    ```
-2. **Launch** the test hosts:
+2. **Ensure** the Docket network exists:
+   ```bash
+   docker network inspect vagrantnet >/dev/null 2>&1 \
+    || docker network create --driver bridge --subnet 10.0.1.0/24 vagrantnet
+
+   ```
+3. **Launch** the test hosts:
 
    ```bash
    vagrant up --provider=docker
    ```
-3. **Run** the Ansible playbook:
+4. **Run** the Ansible playbook:
 
    ```bash
    ansible-playbook site.yml -i inventory/vagrant.ini
    ```
-4. **Verify** the endpoints:
+5. **Verify** the endpoints:
 
    ```bash
    curl http://127.0.0.1:2225/-/healthy    # Prometheus
@@ -89,24 +112,21 @@ To simplify testing, we use **Vagrant** with the **Docker** provider:
 
 ---
 
-## 📂 Project Structure
+## 🌐 Accessing the UIs
 
-```
-ansible-mon-stack/
-├─ site.yml
-├─ Vagrantfile
-├─ inventory/
-│  └─ vagrant.ini
-├─ group_vars/
-│  └─ all.yml
-└─ roles/
-   ├─ common/
-   ├─ influxdb/
-   ├─ telegraf/
-   ├─ node_exporter/
-   └─ prometheus/
-```
+Once everything is up, you can hit the web UIs directly on your host:
+**Prometheus Web UI**
 
+  ```plaintext
+  http://localhost:9090
+   ```
+
+**InfluxDB HTTP API (Ping)**
+
+  ```plaintext
+  http://localhost:9090
+   ```
+(Port forwarding is already configured in the Vagrantfile, so no additional steps are required.)
 ---
 
 ## 🔍 Tips

@@ -1,8 +1,20 @@
-- name: reload systemd
-  systemd:
-    daemon_reload: yes
-
 - name: restart node_exporter
-  systemd:
-    name: node_exporter
-    state: restarted
+  block:
+    - name: Reload systemd
+      systemd:
+        daemon_reload: yes
+
+    - name: Restart node_exporter.service
+      systemd:
+        name: node_exporter
+        state: restarted
+
+    - name: Restart Node Exporter manually (Docker fallback)
+      shell: |
+        pkill node_exporter || true
+        nohup node_exporter --web.listen-address=":{{ node_exporter_port | default(9100) }}" \
+          > /var/log/node_exporter.log 2>&1 &
+      args:
+        executable: /bin/bash
+      when: ansible_service_mgr != 'systemd'
+  when: ansible_service_mgr == 'systemd' or ansible_service_mgr != 'systemd'

@@ -1,9 +1,22 @@
 ---
-- name: reload systemd
-  systemd:
-    daemon_reload: yes
-
 - name: restart prometheus
-  systemd:
-    name: prometheus
-    state: restarted
+  block:
+    - name: Reload systemd
+      systemd:
+        daemon_reload: yes
+
+    - name: Restart prometheus.service
+      systemd:
+        name: prometheus
+        state: restarted
+
+    - name: Launch Prometheus manually if not under systemd
+      shell: |
+        pkill prometheus || true
+        nohup prometheus \
+          --config.file=/etc/prometheus/prometheus.yml \
+          --storage.tsdb.path=/var/lib/prometheus \
+          > /var/log/prometheus.log 2>&1 &
+      args:
+        executable: /bin/bash
+      when: ansible_service_mgr != 'systemd'

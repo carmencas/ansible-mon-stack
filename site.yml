@@ -29,16 +29,56 @@
   roles:
     - prometheus
 
-- name: Verify services
-  hosts: all
+- name: Verify Prometheus health
+  hosts: prometheus
+  gather_facts: no
   tasks:
-    - name: Check that the services are running
+    - name: Check Prometheus /-/healthy endpoint
       uri:
-        url: "{{ item }}"
+        url: "http://{{ ansible_host }}:{{ prometheus_port }}/-/healthy"
         method: GET
-      ignore_errors: yes
-      loop:
-        - "http://{{ ansible_default_ipv4.address }}:{{ prometheus_port }}"
-        - "http://{{ ansible_default_ipv4.address }}:{{ influxdb_port }}/ping"
-        - "http://{{ ansible_default_ipv4.address }}:{{ node_exporter_port }}/metrics"
-      when: item != ""
+        status_code: 200
+      register: prom_health
+      retries: 3
+      delay: 5
+      until: prom_health.status == 200
+
+    - name: Show Prometheus health result
+      debug:
+        msg: "Prometheus healthy endpoint returned {{ prom_health.status }}"
+
+- name: Verify InfluxDB ping
+  hosts: influxdb
+  gather_facts: no
+  tasks:
+    - name: Check InfluxDB /ping endpoint
+      uri:
+        url: "http://{{ ansible_host }}:{{ influxdb_port }}/ping"
+        method: GET
+        status_code: [200, 204]
+      register: influx_ping
+      retries: 3
+      delay: 5
+      until: influx_ping.status in [200, 204]
+
+    - name: Show InfluxDB ping result
+      debug:
+        msg: "InfluxDB ping endpoint returned {{ influx_ping.status }}"
+
+- name: Verify Node Exporter metrics
+  hosts: node_exporter_servers
+  gather_facts: no
+  tasks:
+    - name: Check Node Exporter /metrics endpoint
+      uri:
+        url: "http://{{ ansible_host }}:{{ node_exporter_port }}/metrics"
+        method: GET
+        status_code: 200
+      register: ne_metrics
+      retries: 3
+      delay: 5
+      until: ne_metrics.status == 200
+
+    - name: Show Node Exporter metrics result
+      debug:
+        msg: "Node Exporter metrics endpoint returned {{ ne_metrics.status }}"

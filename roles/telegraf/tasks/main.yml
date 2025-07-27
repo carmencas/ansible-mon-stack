@@ -5,9 +5,19 @@
     system: yes
     shell: /bin/false
 
-- name: Add Telegraf repository GPG key
+- name: Ensure HTTPS apt transport, CA certs & GPG available
+  apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - gnupg
+    state: present
+    update_cache: yes
+
+- name: Import InfluxData GPG key from keyserver
   apt_key:
-    url: https://repos.influxdata.com/influxdb.key
+    keyserver: keyserver.ubuntu.com
+    id: D8FF8E1F7DF8B07E
     state: present
 
 - name: Add Telegraf repository
@@ -15,11 +25,14 @@
     repo: "deb https://repos.influxdata.com/ubuntu focal stable"
     state: present
 
+- name: Update apt cache
+  apt:
+    update_cache: yes
+
 - name: Install Telegraf
   apt:
     name: telegraf
     state: present
-    update_cache: yes
 
 - name: Configure Telegraf
   template:
@@ -30,8 +43,18 @@
     backup: yes
   notify: restart telegraf
 
-- name: Start and enable Telegraf
+- name: Start Telegraf via systemd
   systemd:
     name: telegraf
     enabled: yes
     state: started
+  when: ansible_service_mgr == 'systemd'
+
+- name: Launch Telegraf manually (Docker fallback)
+  shell: |
+    pkill telegraf || true
+    nohup telegraf --config /etc/telegraf/telegraf.conf \
+      > /var/log/telegraf.log 2>&1 &
+  args:
+    executable: /bin/bash
+  when: ansible_service_mgr != 'systemd'

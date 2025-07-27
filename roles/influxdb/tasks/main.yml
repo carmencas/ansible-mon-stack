@@ -47,21 +47,20 @@
     group: "{{ influxdb_user }}"
   notify: restart influxdb
 
-- name: Reload and restart InfluxDB via systemd
-  block:
-    - name: Reload systemd
-      systemd:
-        daemon_reload: yes
-
-    - name: Restart influxdb.service
-      systemd:
-        name: influxdb
-        state: restarted
+- name: Reload systemd (if running)
+  systemd:
+    daemon_reload: yes
   when: ansible_service_mgr == 'systemd'
 
-- name: Restart InfluxDB manually (Docker fallback)
+- name: Start & enable InfluxDB via systemd
+  systemd:
+    name: influxdb
+    enabled: yes
+    state: started
+  when: ansible_service_mgr == 'systemd'
+
+- name: Launch influxd manually in background (Docker fallback)
   shell: |
-    # kill any old process, then launch in background
     pkill influxd || true
     nohup influxd --config /etc/influxdb/influxdb.conf \
       > /var/log/influxd.log 2>&1 &

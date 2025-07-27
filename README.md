@@ -1,214 +1,120 @@
-# Simple Monitoring Stack 🎯
+# 📊 Ansible Simple Monitoring Stack
 
-**Objective:** Minimal viable stack, easy to install and maintain.
+This project provides a **lightweight, minimal monitoring stack** orchestrated with Ansible, consisting of:
 
-**Components:** InfluxDB + Telegraf + Prometheus + Node Exporter
-
-**Complexity:** 4/10 (vs. 8/10 for the full stack)
-
-**Estimated Time:** 1–2 days max
-
----
-
-## 📁 Simplified Structure
-
-```
-ansible-monitoring-simple/
-├── ansible.cfg
-├── site.yml
-├── inventory/
-│   └── hosts.ini
-├── group_vars/
-│   └── all.yml
-├── roles/
-│   ├── common/
-│   │   └── tasks/main.yml
-│   ├── telegraf/
-│   ├── node_exporter/
-│   ├── prometheus/
-│   └── influxdb/
-└── Vagrantfile       # For local Docker testing
-```
+* **InfluxDB**: a time-series database for storing metrics collected by Telegraf.
+* **Telegraf**: a metrics agent that gathers system and application metrics, sends them to InfluxDB, and exposes a Prometheus-compatible `/metrics` endpoint.
+* **Node Exporter**: a Prometheus exporter that provides detailed system metrics.
+* **Prometheus**: a monitoring and alerting system that scrapes metrics from Node Exporter and Telegraf.
 
 ---
 
-## 🔧 Configuration Files
+## 🎯 Goal
 
-### `ansible.cfg`
+Provide a reproducible, easy-to-launch environment to validate monitoring configurations before deploying to production. With this setup you can:
 
-```ini
-[defaults]
-inventory = inventory/hosts.ini
-host_key_checking = false
-timeout = 30
-gather_facts = true
-remote_user = ansible
+* Test Ansible playbooks in a controlled environment.
+* Confirm that all services start and communicate as expected.
+* Iterate quickly on configurations without needing physical or full virtual machines.
 
-[privilege_escalation]
-become = true
-become_method = sudo
-```
-
-### `group_vars/all.yml`
-
-```yaml
 ---
-# Versions (LTS)
-telegraf_version: "1.28"
-prometheus_version: "2.47.0"
-node_exporter_version: "1.6.1"
-influxdb_version: "1.8.10"
 
-# Ports
-prometheus_port: 9090
-node_exporter_port: 9100
-influxdb_port: 8086
-telegraf_port: 8125
+## 🔄 Service Interactions
 
-# Basic settings
-cluster_name: "monitoring"
-environment: "production"
-timezone: "Europe/Madrid"
-
-# InfluxDB specifics
-influxdb_database: "telegraf"
-influxdb_retention: "30d"
-
-# Service users
-prometheus_user: "prometheus"
-telegraf_user: "telegraf"
-influxdb_user: "influxdb"
+```mermaid
+graph TD
+    A[Node Exporter Hosts] --> B[Prometheus]
+    A --> C[Telegraf]
+    C --> D[InfluxDB]
+    C --> B[Prometheus]
+    B --> E[Dashboards / Alerts]
 ```
 
-### `inventory/hosts.ini`
+1. **Node Exporter** runs on each server and exposes metrics at `:9100/metrics`.
+2. **Telegraf** runs on each server:
 
-```ini
-[telegraf_servers]
-web01 ansible_host=10.0.1.10
-web02 ansible_host=10.0.1.11
-db01  ansible_host=10.0.1.20
+   * Collects system metrics.
+   * Writes metrics to **InfluxDB** (`:8086/ping`, data writes via UDP/TCP).
+   * Exposes a Prometheus endpoint at `:8125/metrics`.
+3. **Prometheus** periodically scrapes:
 
-[node_exporter_servers]
-web01     ansible_host=10.0.1.10
-web02     ansible_host=10.0.1.11
-db01      ansible_host=10.0.1.20
-monitor01 ansible_host=10.0.1.30
+   * The Node Exporter endpoints.
+   * The Telegraf Prometheus endpoints.
+4. Metrics are stored in **InfluxDB** and **Prometheus** for querying and visualization.
 
-[prometheus]
-monitor01 ansible_host=10.0.1.30
-
-[influxdb]
-monitor01 ansible_host=10.0.1.30
-
-[all:vars]
-ansible_user=ubuntu
-ansible_python_interpreter=/usr/bin/python3
-```
-
-### `site.yml`
-
-```yaml
 ---
-- name: Base setup on all hosts
-  hosts: all
-  become: yes
-  roles:
-    - common
 
-- name: Install InfluxDB
-  hosts: influxdb
-  become: yes
-  roles:
-    - influxdb
+## 🛠 Simulating Hosts with Vagrant
 
-- name: Install Telegraf
-  hosts: telegraf_servers
-  become: yes
-  roles:
-    - telegraf
+To simplify testing, we use **Vagrant** with the **Docker** provider:
 
-- name: Install Node Exporter
-  hosts: node_exporter_servers
-  become: yes
-  roles:
-    - node_exporter
+1. Each "VM" is actually a Docker container running Ubuntu.
+2. Vagrant sets up a private network and maps unique local ports (e.g., 2222, 2223, …).
+3. The Ansible inventory points to `127.0.0.1` with different ports to mimic separate hosts.
+4. Spin up all containers in parallel with a single command:
 
-- name: Install Prometheus
-  hosts: prometheus
-  become: yes
-  roles:
-    - prometheus
-
-- name: Verify services
-  hosts: all
-  tasks:
-    - name: Check HTTP endpoints
-      uri:
-        url: "{{ item }}"
-        method: GET
-      ignore_errors: yes
-      loop:
-        - "http://{{ ansible_default_ipv4.address }}:{{ prometheus_port }}"
-        - "http://{{ ansible_default_ipv4.address }}:{{ influxdb_port }}/ping"
-        - "http://{{ ansible_default_ipv4.address }}:{{ node_exporter_port }}/metrics"
-```
+   ```bash
+   cd ansible-mon-stack
+   vagrant up --provider=docker
+   ansible-playbook site.yml -i inventory/vagrant.ini
+   ```
 
 ---
 
 ## 🚀 Quick Start
 
-### 1️⃣ Preparation
+1. **Clone** the repository:
 
-```bash
-git clone <repo-url> ansible-monitoring-simple
-cd ansible-monitoring-simple
+   ```bash
+   git clone <repo-url> && cd ansible-mon-stack
+   ```
+2. **Launch** the test hosts:
 
-# Edit with your real IPs:
-nano inventory/hosts.ini
+   ```bash
+   vagrant up --provider=docker
+   ```
+3. **Run** the Ansible playbook:
 
-# (Optional) Adjust variables:
-nano group_vars/all.yml
+   ```bash
+   ansible-playbook site.yml -i inventory/vagrant.ini
+   ```
+4. **Verify** the endpoints:
+
+   ```bash
+   curl http://127.0.0.1:2225/-/healthy    # Prometheus
+   curl http://127.0.0.1:2225/ping         # InfluxDB
+   curl http://127.0.0.1:2222/metrics      # Node Exporter
+   curl http://127.0.0.1:2222/metrics      # Telegraf
+   ```
+
+---
+
+## 📂 Project Structure
+
 ```
-
-### 2️⃣ Production Deployment
-
-```bash
-ansible-playbook site.yml -i inventory/hosts.ini
-```
-
-### 3️⃣ Verification
-
-```bash
-ansible all -i inventory/hosts.ini -m ping
-curl http://10.0.1.30:9090/targets
-curl http://10.0.1.30:8086/ping
+ansible-mon-stack/
+├─ site.yml
+├─ Vagrantfile
+├─ inventory/
+│  └─ vagrant.ini
+├─ group_vars/
+│  └─ all.yml
+└─ roles/
+   ├─ common/
+   ├─ influxdb/
+   ├─ telegraf/
+   ├─ node_exporter/
+   └─ prometheus/
 ```
 
 ---
 
-## 🧪 Local Testing with Vagrant + Docker (Optional)
+## 🔍 Tips
 
-You can quickly spin up a full test environment locally using the included Vagrantfile and Docker. Simply:
-
-```bash
-vagrant destroy -f           # clean previous run
-vagrant up --provider=docker # launch containers
-ansible-playbook site.yml -i inventory/vagrant.ini
-vagrant destroy -f           # teardown
-```
-
-For full step-by-step details, refer to the “Local Testing” section in Quick Start above.
-
-## ✅ Why This Stack??
-
-* **No Grafana / AlertManager** → Simpler, fewer dependencies
-* **Minimal configuration** → Quick rollout
-* **Local Vagrant testing** → Mirror real environment in minutes
-* **Lightweight** → Easy to maintain and scale
-
-**Complexity**: 4/10
-**Time**: 1–2 days
+* Adjust version variables in `group_vars/all.yml`.
+* Use `--limit` or `--tags` with `ansible-playbook` to run individual roles.
+* For real deployments, remove the Vagrant/Docker layer and point the inventory at your actual servers.
 
 ---
 
-**Ready to monitor your infrastructure with simplicity!**
+Now you have a minimal, fully automated monitoring stack you can spin up and tear down at will. Happy monitoring! 🚀

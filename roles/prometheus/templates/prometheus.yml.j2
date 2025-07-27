@@ -10,12 +10,12 @@ scrape_configs:
     static_configs:
       - targets:
 {% for host in groups['node_exporter_servers'] %}
-        - {{ hostvars[host]['ansible_default_ipv4']['address'] }}:{{ node_exporter_port }}
+        - {{ hostvars[host]['ansible_host'] }}:{{ node_exporter_port }}
 {% endfor %}
 
   - job_name: 'telegraf'
     static_configs:
       - targets:
 {% for host in groups['telegraf_servers'] %}
-        - {{ hostvars[host]['ansible_default_ipv4']['address'] }}:{{ telegraf_port }}
+        - {{ hostvars[host]['ansible_host'] }}:{{ node_exporter_port }}
 {% endfor %}

@@ -1,10 +1,9 @@
 ---
-- name: Create Prometheus user
+- name: Create prometheus user
   user:
     name: "{{ prometheus_user }}"
     system: yes
     shell: /bin/false
-    home: /var/lib/prometheus
     createhome: yes
 
 - name: Create directories for Prometheus
@@ -17,18 +16,19 @@
     - /etc/prometheus
     - /var/lib/prometheus
 
-- name: Download Prometheus
+- name: Download Prometheus archive
   get_url:
     url: "https://github.com/prometheus/prometheus/releases/download/v{{ prometheus_version }}/prometheus-{{ prometheus_version }}.linux-amd64.tar.gz"
-    dest: "/tmp/prometheus.tar.gz"
+    dest: "/tmp/prometheus-{{ prometheus_version }}.linux-amd64.tar.gz"
 
-- name: Extract Prometheus archive
+
+- name: Extract Prometheus
   unarchive:
-    src: "/tmp/prometheus.tar.gz"
+    src: "/tmp/prometheus-{{ prometheus_version }}.linux-amd64.tar.gz"
     dest: "/tmp"
     remote_src: yes
 
-- name: Copy Prometheus binaries
+- name: Install Prometheus binaries
   copy:
     src: "/tmp/prometheus-{{ prometheus_version }}.linux-amd64/{{ item }}"
     dest: "/usr/local/bin/{{ item }}"
@@ -40,7 +40,7 @@
     - prometheus
     - promtool
 
-- name: Configure Prometheus
+- name: Deploy Prometheus configuration
   template:
     src: prometheus.yml.j2
     dest: /etc/prometheus/prometheus.yml
@@ -48,17 +48,34 @@
     group: "{{ prometheus_user }}"
   notify: restart prometheus
 
-- name: Create systemd service for Prometheus
+- name: Deploy Prometheus systemd unit
   template:
     src: prometheus.service.j2
     dest: /etc/systemd/system/prometheus.service
-  notify:
-    - reload systemd
-    - restart prometheus
+  notify: restart prometheus
 
-- name: Start and enable Prometheus
-  systemd:
-    name: prometheus
-    enabled: yes
-    state: started
-    daemon_reload: yes
+- name: Reload & start Prometheus
+  block:
+    - systemd:
+        daemon_reload: yes
+    - systemd:
+        name: prometheus
+        enabled: yes
+        state: started
+  when: ansible_service_mgr == 'systemd'
+
+- name: Launch Prometheus manually if not under systemd
+  shell: |
+    pkill prometheus || true
+    nohup prometheus \
+      --config.file=/etc/prometheus/prometheus.yml \
+      --storage.tsdb.path=/var/lib/prometheus \
+      > /var/log/prometheus.log 2>&1 &
+  args:
+    executable: /bin/bash
+  when: ansible_service_mgr != 'systemd'
+
+- name: Wait for Prometheus to be ready
+  wait_for:
+    port: "{{ prometheus_port }}"
+    timeout: 60

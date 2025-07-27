@@ -1,5 +1,21 @@
 ---
 - name: restart telegraf
-  systemd:
-    name: telegraf
-    state: restarted
+  block:
+    - name: Reload systemd
+      systemd:
+        daemon_reload: yes
+
+    - name: Restart telegraf.service
+      systemd:
+        name: telegraf
+        state: restarted
+
+    - name: Restart Telegraf manually (Docker fallback)
+      shell: |
+        pkill telegraf || true
+        nohup telegraf --config /etc/telegraf/telegraf.conf \
+          > /var/log/telegraf.log 2>&1 &
+      args:
+        executable: /bin/bash
+      when: ansible_service_mgr != 'systemd'
+  when: ansible_service_mgr == 'systemd' or ansible_service_mgr != 'systemd'

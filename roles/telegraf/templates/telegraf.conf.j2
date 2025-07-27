@@ -9,9 +9,9 @@
 
 # Output to InfluxDB
 [[outputs.influxdb]]
-  urls = ["http://{{ hostvars[groups['influxdb'][0]]['ansible_default_ipv4']['address'] }}:{{ influxdb_port }}"]
+  {% set influx_host = hostvars[groups['influxdb'][0]]['ansible_host'] %}
+  urls = ["http://{{ influx_host }}:{{ influxdb_port }}"]
   database = "{{ influxdb_database }}"
-  timeout = "5s"
 
 # Output for Prometheus (hybrid metrics)
 [[outputs.prometheus_client]]

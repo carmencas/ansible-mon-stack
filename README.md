@@ -85,7 +85,7 @@ To simplify testing, we use **Vagrant** with the **Docker** provider:
    ```bash
    git clone <repo-url> && cd ansible-mon-stack
    ```
-2. **Ensure** the Docket network exists:
+2. **Ensure** the Docker network exists:
    ```bash
    docker network inspect vagrantnet >/dev/null 2>&1 \
     || docker network create --driver bridge --subnet 10.0.1.0/24 vagrantnet
@@ -103,12 +103,15 @@ To simplify testing, we use **Vagrant** with the **Docker** provider:
    ```
 5. **Verify** the endpoints:
 
-   ```bash
-   curl http://127.0.0.1:2225/-/healthy    # Prometheus
-   curl http://127.0.0.1:2225/ping         # InfluxDB
-   curl http://127.0.0.1:2222/metrics      # Node Exporter
-   curl http://127.0.0.1:2222/metrics      # Telegraf
-   ```
+  ```bash
+  curl http://10.0.1.10:9100/metrics   # Node Exporter @ web01
+  curl http://10.0.1.10:8125/metrics   # Telegraf     @ web01
+  curl http://10.0.1.11:9100/metrics   # Node Exporter @ web02
+  curl http://10.0.1.11:8125/metrics   # Telegraf     @ web02
+  curl http://10.0.1.20:9100/metrics   # Node Exporter @ db01
+  curl http://10.0.1.20:8125/metrics   # Telegraf     @ db01
+    curl http://10.0.1.30:9100/metrics   # Node Exporter @ monitor01
+  ```
 
 ---
 
@@ -147,7 +150,7 @@ Once everything is up, you can hit the web UIs directly on your host:
 **InfluxDB HTTP API (Ping)**
 
   ```plaintext
-  http://localhost:9090
+  http://localhost:8086/ping
    ```
 ---
 

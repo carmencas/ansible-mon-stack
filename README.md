@@ -119,12 +119,12 @@ To simplify testing, we use **Vagrant** with the **Docker** provider:
 
 Once everything is up, you can hit the web UIs directly on your host:
 
-**Prometheus Web UI**
+### Prometheus Web UI
 
   ```plaintext
   http://localhost:9090
    ```
-  ### 📋 Key Sections
+  **📋 Key Sections**
   - **Status → Targets**  
     View the list of all scrape targets (Node Exporter, Telegraf endpoints, and Prometheus itself). Each target should show **UP** under the “Status” column.  
 
@@ -148,7 +148,7 @@ Once everything is up, you can hit the web UIs directly on your host:
     (If configured) view firing or pending alerts.
 
 
-**InfluxDB HTTP API (Ping)**
+### InfluxDB HTTP API (Ping)
 
   ```plaintext
   http://localhost:8086/ping

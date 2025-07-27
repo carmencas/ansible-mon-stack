@@ -114,7 +114,7 @@ To simplify testing, we use **Vagrant** with the **Docker** provider:
 
 ## 🌐 Accessing the UIs
 
-Once everything is up, you can hit the web UIs directly on your host:
+Once everything is up, you can hit the web UIs directly on your host (Port forwarding is already configured in the Vagrantfile, so no additional steps are required):
 **Prometheus Web UI**
 
   ```plaintext
@@ -127,7 +127,6 @@ Once everything is up, you can hit the web UIs directly on your host:
   http://localhost:9090
    ```
 
-Port forwarding is already configured in the Vagrantfile, so no additional steps are required.
 ---
 
 ## 🔍 Tips

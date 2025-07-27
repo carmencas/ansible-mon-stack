@@ -118,6 +118,7 @@ To simplify testing, we use **Vagrant** with the **Docker** provider:
 ## 🌐 Accessing the UIs
 
 Once everything is up, you can hit the web UIs directly on your host:
+
 **Prometheus Web UI**
 
   ```plaintext

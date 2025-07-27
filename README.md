@@ -121,8 +121,8 @@ Once everything is up, you can hit the web UIs directly on your host:
 
 ### Prometheus Web UI
 
-  ```plaintext
-  http://localhost:9090
+   ```plaintext
+   http://localhost:9090
    ```
   **📋 Key Sections**
   - **Status → Targets**  
@@ -132,9 +132,9 @@ Once everything is up, you can hit the web UIs directly on your host:
 
   - **Graph**  
   Enter PromQL expressions to verify data ingestion. For example:
-  ```promql
-  avg by (instance) (rate(node_cpu_seconds_total{mode!="idle"}[1m]))
-  ```
+   ```promql
+   avg by (instance) (rate(node_cpu_seconds_total{mode!="idle"}[1m]))
+   ```
 
   ![Prometheus Graph View](assets/02-Prometheus_graph.png)
 
@@ -150,8 +150,8 @@ Once everything is up, you can hit the web UIs directly on your host:
 
 ### InfluxDB HTTP API (Ping)
 
-  ```plaintext
-  http://localhost:8086/ping
+   ```plaintext
+   http://localhost:8086/ping
    ```
 ---
 

@@ -131,6 +131,7 @@ Once everything is up, you can hit the web UIs directly on your host:
   ```promql
   avg by (instance) (rate(node_cpu_seconds_total{mode!="idle"}[1m]))
   ```
+
   ![Prometheus Graph View](assets/02-Prometheus_graph.png)
 
   - **Status → Service Discovery**  

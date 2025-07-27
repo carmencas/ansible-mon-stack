@@ -110,7 +110,7 @@ To simplify testing, we use **Vagrant** with the **Docker** provider:
   curl http://10.0.1.11:8125/metrics   # Telegraf     @ web02
   curl http://10.0.1.20:9100/metrics   # Node Exporter @ db01
   curl http://10.0.1.20:8125/metrics   # Telegraf     @ db01
-    curl http://10.0.1.30:9100/metrics   # Node Exporter @ monitor01
+  curl http://10.0.1.30:9100/metrics   # Node Exporter @ monitor01
   ```
 
 ---

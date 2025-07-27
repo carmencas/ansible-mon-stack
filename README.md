@@ -127,7 +127,7 @@ Once everything is up, you can hit the web UIs directly on your host:
   http://localhost:9090
    ```
 
-  (Port forwarding is already configured in the Vagrantfile, so no additional steps are required.)
+Port forwarding is already configured in the Vagrantfile, so no additional steps are required.
 ---
 
 ## 🔍 Tips

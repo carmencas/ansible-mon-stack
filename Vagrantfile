@@ -29,7 +29,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     config.vm.define n[:name] do |node|
       node.vm.hostname = n[:name]
 
-      # 1) Expose SSH on localhost:2222→container:22 etc
+      # 1) SSH forwarding
       node.vm.network :forwarded_port,
         guest: 22, host: n[:ssh_port], host_ip: "127.0.0.1",
         id: "ssh", auto_correct: false
@@ -44,16 +44,21 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
         d.has_ssh     = true
         d.create_args = ["--hostname", n[:name]]
 
+        # 3) Expose UIs in monitor01
+        if n[:name] == "monitor01"
+          d.ports = ["9090:9090", "8086:8086"]
+        end
+
         d.cmd = ["bash", "-lc", <<~BASH]
           set -euo pipefail
           export DEBIAN_FRONTEND=noninteractive
 
           apt-get update
-          apt-get install -y openssh-server sudo python3 python3-apt
+          apt-get install -y openssh-server sudo python3 python3-apt netcat
 
           # create & unlock vagrant user
           id vagrant >/dev/null 2>&1 || useradd -m -s /bin/bash vagrant
-          echo "vagrant ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/vagrant
+          echo "vagrant ALL=(ALL) NOPASSWD:ALL" >/etc/sudoers.d/vagrant
           chmod 0440 /etc/sudoers.d/vagrant
           usermod -U vagrant
           echo 'vagrant:vagrant' | chpasswd
@@ -61,16 +66,16 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
           # inject your ed25519 public key
           mkdir -p /home/vagrant/.ssh
           chmod 700 /home/vagrant/.ssh
-          cat > /home/vagrant/.ssh/authorized_keys <<EOF
-      #{PUBKEY}
-      EOF
+          cat >/home/vagrant/.ssh/authorized_keys <<EOF
+#{PUBKEY}
+EOF
           chmod 600 /home/vagrant/.ssh/authorized_keys
           chown -R vagrant:vagrant /home/vagrant/.ssh
 
           # enable both password & pubkey auth in SSHD
           mkdir -p /run/sshd
           sed -i 's/^#\\?PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config
-          sed -i 's/^#\\?PubkeyAuthentication.*/PubkeyAuthentication yes/'    /etc/ssh/sshd_config
+          sed -i 's/^#\\?PubkeyAuthentication.*/PubkeyAuthentication yes/'   /etc/ssh/sshd_config
           sed -i 's/^#\\?UsePAM.*/UsePAM yes/'                               /etc/ssh/sshd_config
           ssh-keygen -A
 

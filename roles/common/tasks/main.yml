@@ -12,6 +12,8 @@
       - htop
       - vim
       - jq 
+      - tzdata 
+      - gnupg 
     state: present
 
 - name: Configure timezone

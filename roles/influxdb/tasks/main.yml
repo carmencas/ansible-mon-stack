@@ -6,9 +6,19 @@
     shell: /bin/false
     createhome: no
 
-- name: Add InfluxDB repository GPG key
+- name: Ensure HTTPS apt transport, CA certs & GPG available
+  apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - gnupg
+    state: present
+    update_cache: yes
+
+- name: Import InfluxData GPG key from keyserver
   apt_key:
-    url: https://repos.influxdata.com/influxdb.key
+    keyserver: keyserver.ubuntu.com
+    id: D8FF8E1F7DF8B07E
     state: present
 
 - name: Add InfluxDB repository
@@ -37,11 +47,27 @@
     group: "{{ influxdb_user }}"
   notify: restart influxdb
 
-- name: Start and enable InfluxDB
-  systemd:
-    name: influxdb
-    enabled: yes
-    state: started
+- name: Reload and restart InfluxDB via systemd
+  block:
+    - name: Reload systemd
+      systemd:
+        daemon_reload: yes
+
+    - name: Restart influxdb.service
+      systemd:
+        name: influxdb
+        state: restarted
+  when: ansible_service_mgr == 'systemd'
+
+- name: Restart InfluxDB manually (Docker fallback)
+  shell: |
+    # kill any old process, then launch in background
+    pkill influxd || true
+    nohup influxd --config /etc/influxdb/influxdb.conf \
+      > /var/log/influxd.log 2>&1 &
+  args:
+    executable: /bin/bash
+  when: ansible_service_mgr != 'systemd'
 
 - name: Wait for InfluxDB to be ready
   wait_for:
